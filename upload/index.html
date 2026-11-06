@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#111827">
-  <title>AudioUpload</title>
+  <title>AudioDrop — временные аудиоссылки</title>
 
   <style>
     * { box-sizing: border-box; }
@@ -104,10 +104,10 @@
 
 <main class="container">
 
- 
+  <h1>🎵 AudioDrop</h1>
 
   <p class="description">
-Загрузи аудио и получи прямую ссылку.
+    Загрузи аудио и получи прямую ссылку.
   </p>
 
   <div class="upload">
@@ -129,11 +129,18 @@
   </button>
 
   <p class="status" id="status">
-    Для начала выбери файл.
+    Выбери файл для начала.
   </p>
 
   <div class="result" id="result">
     <p>✅ Аудио загружено!</p>
+
+    <a id="downloadLink"
+       href="#"
+       target="_blank"
+       rel="noopener">
+      Скачать аудио
+    </a>
 
     <button class="secondary" id="copyButton">
       📋 Скопировать ссылку
@@ -283,4 +290,3 @@ copyButton.addEventListener("click", async () => {
 
 </body>
 </html>
-
