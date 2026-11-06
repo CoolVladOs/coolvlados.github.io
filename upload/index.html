@@ -5,37 +5,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#111827">
-  <title>Test</title>
+  <title>AudioDrop — временные аудиоссылки</title>
+
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       min-height: 100vh;
+      padding: 24px 16px;
       display: grid;
       place-items: center;
-      padding: 20px;
-      font-family: Arial, sans-serif;
       background: #0f172a;
-      color: white;
+      color: #fff;
+      font-family: Arial, sans-serif;
     }
 
     .container {
       width: 100%;
       max-width: 480px;
-      padding: 32px;
+      padding: 30px;
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 20px;
       text-align: center;
     }
 
-    h1 {
-      margin-top: 0;
-      font-size: 32px;
-    }
+    h1 { font-size: 32px; margin: 0 0 12px; }
 
     .description {
       color: #cbd5e1;
@@ -43,67 +39,256 @@
     }
 
     .upload {
-      display: block;
-      margin: 28px 0 16px;
-      padding: 32px 16px;
+      margin: 25px 0;
+      padding: 25px 12px;
       border: 2px dashed #64748b;
       border-radius: 14px;
     }
 
-    input {
-      max-width: 100%;
-      margin-top: 16px;
+    input { max-width: 100%; margin-top: 18px; }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border: 0;
+      border-radius: 10px;
+      background: #3b82f6;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
     }
 
-    .limit {
-      color: #94a3b8;
-      font-size: 13px;
-      margin-top: 18px;
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
     }
+
+    .secondary { background: #334155; }
 
     .status {
-      min-height: 24px;
+      min-height: 25px;
       color: #93c5fd;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+
+    .result {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      background: #0f172a;
+      border-radius: 12px;
       overflow-wrap: anywhere;
     }
 
-    footer {
-      margin-top: 28px;
-      color: #94a3b8;
+    .result a { color: #60a5fa; }
+
+    .small {
       font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-top: 20px;
+    }
+
+    footer {
+      color: #64748b;
+      font-size: 12px;
+      margin-top: 25px;
     }
   </style>
 </head>
+
 <body>
-  <main class="container">
-    <h1>🎵 AudioDrop</h1>
 
-    <p class="description">
-      Загрузи аудио и получи ссылку,
-      которой можно поделиться.
+<main class="container">
+
+  <h1>🎵 AudioDrop</h1>
+
+  <p class="description">
+    Загрузи аудио и получи прямую ссылку
+    для скачивания.
+  </p>
+
+  <div class="upload">
+    <div>☁️ Выбери аудиофайл</div>
+
+    <input
+      type="file"
+      id="audio"
+      accept="audio/*"
+    >
+
+    <p class="small">
+      Максимальный размер: 50 МБ
     </p>
+  </div>
 
-    <div class="upload">
-      <div>☁️ Выбери аудиофайл</div>
+  <button id="uploadButton">
+    Загрузить аудио
+  </button>
 
-      <input
-        type="file"
-        id="audio"
-        accept="audio/*"
-      >
+  <p class="status" id="status">
+    Выбери файл для начала.
+  </p>
 
-      <p class="limit">
-        Максимальный размер: 100 МБ
-      </p>
-    </div>
+  <div class="result" id="result">
+    <p>✅ Аудио загружено!</p>
 
-    <p class="status" id="status">
-      Скоро здесь появится загрузка файлов.
+    <a id="downloadLink"
+       href="#"
+       target="_blank"
+       rel="noopener">
+      Скачать аудио
+    </a>
+
+    <button class="secondary" id="copyButton">
+      📋 Скопировать ссылку
+    </button>
+
+    <p class="small">
+      Ссылка действует 24 часа.
     </p>
+  </div>
 
-    <footer>
-      Временное хранение аудиофайлов
-    </footer>
-  </main>
+  <footer>
+    AudioDrop · Временное хранение аудио
+  </footer>
+
+</main>
+
+<script type="module">
+import { createClient } from
+  "https://esm.sh/@supabase/supabase-js@2";
+
+// ВСТАВЬ СВОИ ДАННЫЕ SUPABASE
+const SUPABASE_URL = "ВСТАВЬ_PROJECT_URL";
+const SUPABASE_KEY = "ВСТАВЬ_PUBLISHABLE_KEY";
+
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+const audioInput = document.getElementById("audio");
+const uploadButton = document.getElementById("uploadButton");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
+const downloadLink = document.getElementById("downloadLink");
+const copyButton = document.getElementById("copyButton");
+
+let currentLink = "";
+
+uploadButton.addEventListener("click", async () => {
+
+  const file = audioInput.files[0];
+
+  if (!file) {
+    status.textContent = "Сначала выбери аудиофайл.";
+    return;
+  }
+
+  if (file.size > 50 * 1024 * 1024) {
+    status.textContent = "Файл слишком большой. Максимум 50 МБ.";
+    return;
+  }
+
+  if (!file.type.startsWith("audio/")) {
+    status.textContent = "Выбери аудиофайл.";
+    return;
+  }
+
+  uploadButton.disabled = true;
+  result.style.display = "none";
+
+  try {
+
+    // 1. Получаем разрешение на загрузку
+    status.textContent = "Подготавливаем загрузку...";
+
+    const { data: permission, error: permissionError } =
+      await supabase.functions.invoke("create-upload", {
+        body: {
+          fileName: file.name,
+          contentType: file.type,
+          size: file.size
+        }
+      });
+
+    if (permissionError) throw permissionError;
+
+    if (!permission?.path || !permission?.token) {
+      throw new Error("Не удалось получить разрешение на загрузку.");
+    }
+
+    // 2. Загружаем файл непосредственно в Storage
+    status.textContent = "Загружаем аудио...";
+
+    const { error: uploadError } = await supabase.storage
+      .from("audio-files")
+      .uploadToSignedUrl(
+        permission.path,
+        permission.token,
+        file,
+        {
+          contentType: file.type
+        }
+      );
+
+    if (uploadError) throw uploadError;
+
+    // 3. Получаем ссылку на скачивание
+    status.textContent = "Создаём ссылку...";
+
+    const { data: finished, error: finishError } =
+      await supabase.functions.invoke("finish-upload", {
+        body: {
+          path: permission.path
+        }
+      });
+
+    if (finishError) throw finishError;
+
+    if (!finished?.downloadUrl) {
+      throw new Error("Ссылка не была получена.");
+    }
+
+    // 4. Показываем результат
+    currentLink = finished.downloadUrl;
+    downloadLink.href = currentLink;
+
+    result.style.display = "block";
+    status.textContent = "Готово! Аудио успешно загружено.";
+
+  } catch (error) {
+
+    console.error(error);
+
+    status.textContent =
+      "Ошибка: " + (error.message || "не удалось загрузить файл");
+
+  } finally {
+
+    uploadButton.disabled = false;
+
+  }
+});
+
+copyButton.addEventListener("click", async () => {
+
+  try {
+    await navigator.clipboard.writeText(currentLink);
+    copyButton.textContent = "Скопировано! ✓";
+
+  } catch {
+    status.textContent = "Не удалось скопировать. Скопируй ссылку вручную.";
+  }
+
+});
+
+</script>
+
 </body>
 </html>
+
