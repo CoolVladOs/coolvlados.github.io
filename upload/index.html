@@ -163,6 +163,17 @@ import { createClient } from
 
 // ВСТАВЬ СВОИ ДАННЫЕ SUPABASE
 const SUPABASE_URL = "https://slblprvuzoijjmpppaga.supabase.co";
+const shortCode = new URLSearchParams(window.location.search).get("s");
+
+if (shortCode) {
+  if (/^[A-Za-z0-9_-]{8}$/.test(shortCode)) {
+    window.location.replace(
+      `${SUPABASE_URL}/functions/v1/resolve-link?code=${encodeURIComponent(shortCode)}`
+    );
+  } else {
+    document.body.innerHTML = "<h2>Некорректная ссылка</h2>";
+  }
+}
 const SUPABASE_KEY = "sb_publishable_YXkYAaBtJLzUSP6AbBba_A_EZvYUzix";
 
 const supabase = createClient(
