@@ -83,7 +83,10 @@
       overflow-wrap: anywhere;
     }
 
-    .result a { color: #60a5fa; }
+    .result a {
+      color: #60a5fa;
+      word-break: break-all;
+    }
 
     .small {
       font-size: 12px;
@@ -107,7 +110,7 @@
   <h1>🎵 AudioDrop</h1>
 
   <p class="description">
-    Загрузи аудио и получи прямую ссылку.
+    Загрузи аудио и получи короткую ссылку.
   </p>
 
   <div class="upload">
@@ -135,15 +138,17 @@
   <div class="result" id="result">
     <p>✅ Аудио загружено!</p>
 
-    <a id="downloadLink"
-       href="#"
-       target="_blank"
-       rel="noopener">
-      Скачать аудио
+    <a
+      id="downloadLink"
+      href="#"
+      target="_blank"
+      rel="noopener"
+    >
+      Открыть аудио
     </a>
 
     <button class="secondary" id="copyButton">
-      📋 Скопировать ссылку
+      📋 Скопировать короткую ссылку
     </button>
 
     <p class="small">
@@ -161,64 +166,111 @@
 import { createClient } from
   "https://esm.sh/@supabase/supabase-js@2";
 
-// ВСТАВЬ СВОИ ДАННЫЕ SUPABASE
-const SUPABASE_URL = "https://slblprvuzoijjmpppaga.supabase.co";
-const shortCode = new URLSearchParams(window.location.search).get("s");
+const SUPABASE_URL =
+  "https://slblprvuzoijjmpppaga.supabase.co";
 
-if (shortCode) {
+// Проверяем, открыли ли короткую ссылку
+const shortCode =
+  new URLSearchParams(window.location.search).get("s");
+
+if (shortCode !== null) {
+
+  // Страница короткой ссылки
   if (/^[A-Za-z0-9_-]{8}$/.test(shortCode)) {
+
+    document.body.innerHTML = `
+      <main style="
+        min-height:100vh;
+        display:grid;
+        place-items:center;
+        background:#0f172a;
+        color:white;
+        font-family:Arial,sans-serif;
+        text-align:center;
+        padding:24px;
+      ">
+        <div>
+          <h2>🎵 AudioDrop</h2>
+          <p>Открываем аудио...</p>
+        </div>
+      </main>
+    `;
+
     window.location.replace(
       `${SUPABASE_URL}/functions/v1/resolve-link?code=${encodeURIComponent(shortCode)}`
     );
+
   } else {
-    document.body.innerHTML = "<h2>Некорректная ссылка</h2>";
-  }
-}
-const SUPABASE_KEY = "sb_publishable_YXkYAaBtJLzUSP6AbBba_A_EZvYUzix";
 
-const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
-
-const audioInput = document.getElementById("audio");
-const uploadButton = document.getElementById("uploadButton");
-const status = document.getElementById("status");
-const result = document.getElementById("result");
-const downloadLink = document.getElementById("downloadLink");
-const copyButton = document.getElementById("copyButton");
-
-let currentLink = "";
-
-uploadButton.addEventListener("click", async () => {
-
-  const file = audioInput.files[0];
-
-  if (!file) {
-    status.textContent = "Сначала выбери аудиофайл.";
-    return;
+    document.body.innerHTML = `
+      <main style="
+        padding:40px 20px;
+        text-align:center;
+        color:white;
+        background:#0f172a;
+        min-height:100vh;
+        font-family:Arial,sans-serif;
+      ">
+        <h2>Некорректная ссылка</h2>
+        <p>Проверь правильность адреса.</p>
+      </main>
+    `;
   }
 
-  if (file.size > 50 * 1024 * 1024) {
-    status.textContent = "Файл слишком большой. Максимум 50 МБ.";
-    return;
-  }
+} else {
 
-  if (!file.type.startsWith("audio/")) {
-    status.textContent = "Выбери аудиофайл.";
-    return;
-  }
+  // Обычная страница загрузки
 
-  uploadButton.disabled = true;
-  result.style.display = "none";
+  const SUPABASE_KEY =
+    "sb_publishable_YXkYAaBtJLzUSP6AbBba_A_EZvYUzix";
 
-  try {
+  const supabase = createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
 
-    // 1. Получаем разрешение на загрузку
-    status.textContent = "Подготавливаем загрузку...";
+  const audioInput = document.getElementById("audio");
+  const uploadButton = document.getElementById("uploadButton");
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+  const downloadLink = document.getElementById("downloadLink");
+  const copyButton = document.getElementById("copyButton");
 
-    const { data: permission, error: permissionError } =
-      await supabase.functions.invoke("create-upload", {
+  let currentLink = "";
+
+  uploadButton.addEventListener("click", async () => {
+
+    const file = audioInput.files[0];
+
+    if (!file) {
+      status.textContent = "Сначала выбери аудиофайл.";
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      status.textContent =
+        "Файл слишком большой. Максимум 50 МБ.";
+      return;
+    }
+
+    if (!file.type.startsWith("audio/")) {
+      status.textContent = "Выбери аудиофайл.";
+      return;
+    }
+
+    uploadButton.disabled = true;
+    result.style.display = "none";
+    currentLink = "";
+
+    try {
+
+      // 1. Получаем разрешение на загрузку
+      status.textContent = "Подготавливаем загрузку...";
+
+      const {
+        data: permission,
+        error: permissionError
+      } = await supabase.functions.invoke("create-upload", {
         body: {
           fileName: file.name,
           contentType: file.type,
@@ -226,76 +278,105 @@ uploadButton.addEventListener("click", async () => {
         }
       });
 
-    if (permissionError) throw permissionError;
+      if (permissionError) throw permissionError;
 
-    if (!permission?.path || !permission?.token) {
-      throw new Error("Не удалось получить разрешение на загрузку.");
-    }
+      if (!permission?.path || !permission?.token) {
+        throw new Error(
+          "Не удалось получить разрешение на загрузку."
+        );
+      }
 
-    // 2. Загружаем файл непосредственно в Storage
-    status.textContent = "Загружаем аудио...";
+      // 2. Загружаем файл в Storage
+      status.textContent = "Загружаем аудио...";
 
-    const { error: uploadError } = await supabase.storage
-      .from("audio-files")
-      .uploadToSignedUrl(
-        permission.path,
-        permission.token,
-        file,
-        {
-          contentType: file.type
-        }
-      );
+      const { error: uploadError } = await supabase.storage
+        .from("audio-files")
+        .uploadToSignedUrl(
+          permission.path,
+          permission.token,
+          file,
+          {
+            contentType: file.type
+          }
+        );
 
-    if (uploadError) throw uploadError;
+      if (uploadError) throw uploadError;
 
-    // 3. Получаем ссылку на скачивание
-    status.textContent = "Создаём ссылку...";
+      // 3. Создаём короткую ссылку
+      status.textContent = "Создаём короткую ссылку...";
 
-    const { data: finished, error: finishError } =
-      await supabase.functions.invoke("finish-upload", {
+      const {
+        data: finished,
+        error: finishError
+      } = await supabase.functions.invoke("finish-upload", {
         body: {
           path: permission.path
         }
       });
 
-    if (finishError) throw finishError;
+      if (finishError) throw finishError;
 
-    if (!finished?.downloadUrl) {
-      throw new Error("Ссылка не была получена.");
+      if (
+        !finished?.shortCode ||
+        !/^[A-Za-z0-9_-]{8}$/.test(finished.shortCode)
+      ) {
+        throw new Error(
+          "Не удалось создать короткую ссылку. Проверь finish-upload."
+        );
+      }
+
+      // 4. Формируем короткий адрес сайта
+      currentLink =
+        `${window.location.origin}${window.location.pathname}?s=${finished.shortCode}`;
+
+      downloadLink.href = currentLink;
+      downloadLink.textContent = currentLink;
+
+      result.style.display = "block";
+      status.textContent =
+        "Готово! Короткая ссылка создана.";
+
+    } catch (error) {
+
+      console.error(error);
+
+      status.textContent =
+        "Ошибка: " +
+        (error.message || "не удалось загрузить файл");
+
+    } finally {
+
+      uploadButton.disabled = false;
+
+    }
+  });
+
+  // 5. Копируем короткую ссылку
+  copyButton.addEventListener("click", async () => {
+
+    if (!currentLink) return;
+
+    try {
+
+      await navigator.clipboard.writeText(currentLink);
+
+      copyButton.textContent = "Скопировано! ✓";
+
+      setTimeout(() => {
+        copyButton.textContent =
+          "📋 Скопировать короткую ссылку";
+      }, 2000);
+
+    } catch {
+
+      status.textContent =
+        "Не удалось скопировать. Скопируй ссылку вручную.";
+
     }
 
-    // 4. Показываем результат
-    currentLink = finished.downloadUrl;
-    downloadLink.href = currentLink;
+  });
 
-    result.style.display = "block";
-    status.textContent = "Готово! Аудио успешно загружено.";
-
-  } catch (error) {
-
-    console.error(error);
-
-    status.textContent =
-      "Ошибка: " + (error.message || "не удалось загрузить файл");
-
-  } finally {
-
-    uploadButton.disabled = false;
-
-  }
-});
-
-copyButton.addEventListener("click", async () => {
-
-  try {
-    await navigator.clipboard.writeText(currentLink);
-    copyButton.textContent = "Скопировано! ✓";
-
-  } catch {
-    status.textContent = "Не удалось скопировать. Скопируй ссылку вручную.";
-  }
-
-});
+}
 
 </script>
 
